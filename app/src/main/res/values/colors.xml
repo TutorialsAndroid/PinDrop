@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Primary Brand Colors -->
+    <color name="primary">#0DB661</color>
+    <color name="onPrimary">#FFFFFF</color>
+
+    <color name="primaryContainer">#92DEB8</color>
+    <color name="onPrimaryContainer">#1C5E3F</color>
+
+    <!-- Secondary -->
+    <color name="secondary">#40C582</color>
+    <color name="onSecondary">#FFFFFF</color>
+
+    <color name="secondaryContainer">#D1F1E1</color>
+    <color name="onSecondaryContainer">#1C5E3F</color>
+
+    <!-- Background & Surface -->
+    <color name="background">#D1F1E1</color>
+    <color name="onBackground">#1C5E3F</color>
+
+    <color name="surface">#FFFFFF</color>
+    <color name="onSurface">#1C5E3F</color>
+
+    <!-- Extra Accent -->
+    <color name="accentGreen">#24BC70</color>
+
+    <!-- Primary Dark Mode Colors -->
+    <color name="primary_night">#24BC70</color>
+    <color name="primaryVariant_night">#1C5E3F</color>
+    <color name="onPrimary_night">#FFFFFF</color>
+
+    <color name="secondary_night">#40C582</color>
+    <color name="onSecondary_night">#FFFFFF</color>
+
+    <!-- Background & Surface -->
+    <color name="background_night">#0F2A1F</color>
+    <color name="surface_night">#143D2B</color>
+    <color name="onSurface_night">#D1F1E1</color>
+
+</resources>
