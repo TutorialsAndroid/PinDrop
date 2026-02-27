@@ -4,6 +4,7 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 
 public class MainActivity extends AppCompatActivity {
@@ -18,16 +19,18 @@ public class MainActivity extends AppCompatActivity {
 
         map = findViewById(R.id.map);
 
-        // Enable high detail tiles
         map.setTileSource(TileSourceFactory.MAPNIK);
-
         map.setMultiTouchControls(true);
 
-        // Very high zoom level for HD detail
-        map.getController().setZoom(20.0);
+        map.setMinZoomLevel(4.0);
+        map.setMaxZoomLevel(19.0);
 
-        map.setMinZoomLevel(4.0);    // Good world overview
-        map.setMaxZoomLevel(19.0);   // Stable high detail
+        // Set default zoom
+        map.getController().setZoom(15.0);
+
+        // ✅ Set default location (New York)
+        GeoPoint startPoint = new GeoPoint(40.7128, -74.0060);
+        map.getController().setCenter(startPoint);
     }
 
     @Override
