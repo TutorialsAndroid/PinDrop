@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -19,15 +20,20 @@ import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import org.osmdroid.events.MapEventsReceiver;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.MapEventsOverlay;
 import org.osmdroid.views.overlay.Marker;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
@@ -38,15 +44,23 @@ public class MainActivity extends AppCompatActivity {
     private MyLocationNewOverlay locationOverlay;
     private MapView map;
     private Marker userMarker;
+    private Marker tappedMarker;
+
+    private final Map<String, String> addressCache = new HashMap<>();
+
+    private TextView tvAddress, tvLatLan;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main_v2);
 
         map = findViewById(R.id.map);
+        tvAddress = findViewById(R.id.tvAddress);
+        tvLatLan = findViewById(R.id.tvLatLan);
+        FloatingActionButton fabRecenter = findViewById(R.id.fabRecenter);
 
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setMultiTouchControls(true);
@@ -64,12 +78,38 @@ public class MainActivity extends AppCompatActivity {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         checkLocationPermission();
 
+        fabRecenter.setOnClickListener(v -> {
+            if (locationOverlay != null && locationOverlay.getMyLocation() != null) {
+                locationOverlay.enableFollowLocation();
+                map.getController().animateTo(locationOverlay.getMyLocation());
+                dropPin(locationOverlay.getMyLocation());
+                updateLocationUI(locationOverlay.getMyLocation().getLatitude(), locationOverlay.getMyLocation().getLongitude());
+            }
+        });
+
         map.setOnTouchListener((v, event) -> {
             if (locationOverlay != null) {
                 locationOverlay.disableFollowLocation();
             }
             return false;
         });
+
+        map.getOverlays().add(new MapEventsOverlay(new MapEventsReceiver() {
+
+            @Override
+            public boolean singleTapConfirmedHelper(GeoPoint p) {
+
+                dropPin(p);
+                updateLocationUI(p.getLatitude(), p.getLongitude());
+
+                return true;
+            }
+
+            @Override
+            public boolean longPressHelper(GeoPoint p) {
+                return false;
+            }
+        }));
     }
 
     @Override
@@ -188,10 +228,30 @@ public class MainActivity extends AppCompatActivity {
                     new GpsMyLocationProvider(this), map);
 
             locationOverlay.enableMyLocation();
-            locationOverlay.enableFollowLocation(); // camera follows user
+            locationOverlay.enableFollowLocation();
+
+            locationOverlay.runOnFirstFix(() -> runOnUiThread(() -> {
+
+                GeoPoint myLocation = locationOverlay.getMyLocation();
+
+                if (myLocation != null) {
+                    updateLocationUI(myLocation.getLatitude(),
+                            myLocation.getLongitude());
+                }
+            }));
+
+            locationOverlay.enableMyLocation();
+            locationOverlay.enableFollowLocation();
 
             map.getOverlays().add(locationOverlay);
         }
+    }
+
+    private void updateLocationUI(double latitude, double longitude) {
+
+        tvLatLan.setText("Latitude: " + latitude + "\nLongitude: " + longitude);
+
+        getAddressFromLocation(latitude, longitude);
     }
 
     private void showOrUpdateUserMarker(GeoPoint geoPoint) {
@@ -215,29 +275,53 @@ public class MainActivity extends AppCompatActivity {
 
     private void getAddressFromLocation(double latitude, double longitude) {
 
-        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        String key = latitude + "," + longitude;
 
-        try {
-            List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
-
-            if (addresses != null && !addresses.isEmpty()) {
-
-                Address address = addresses.get(0);
-
-                String fullAddress = address.getAddressLine(0);
-
-                userMarker.setTitle(fullAddress);
-                userMarker.showInfoWindow();
-
-                map.invalidate();
-            }
-
-        } catch (IOException e) {
-            if (e.getMessage() != null) {
-                Log.e("MainActivity", e.getMessage());
-            }
-            userMarker.setTitle("Location detected");
-            userMarker.showInfoWindow();
+        if (addressCache.containsKey(key)) {
+            tvAddress.setText(addressCache.get(key));
+            return;
         }
+
+        new Thread(() -> {
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+
+            try {
+                List<Address> addresses =
+                        geocoder.getFromLocation(latitude, longitude, 1);
+
+                runOnUiThread(() -> {
+
+                    if (addresses != null && !addresses.isEmpty()) {
+
+                        String fullAddress = addresses.get(0).getAddressLine(0);
+
+                        addressCache.put(key, fullAddress);
+                        tvAddress.setText(fullAddress);
+
+                    } else {
+                        tvAddress.setText("Address not found");
+                    }
+                });
+
+            } catch (IOException e) {
+                runOnUiThread(() ->
+                        tvAddress.setText("Unable to fetch address"));
+            }
+        }).start();
+    }
+
+    private void dropPin(GeoPoint point) {
+
+        if (tappedMarker != null) {
+            map.getOverlays().remove(tappedMarker);
+        }
+
+        tappedMarker = new Marker(map);
+        tappedMarker.setPosition(point);
+        tappedMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        tappedMarker.setTitle("Selected Location");
+
+        map.getOverlays().add(tappedMarker);
+        map.invalidate();
     }
 }
